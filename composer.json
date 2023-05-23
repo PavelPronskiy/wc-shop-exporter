@@ -1,0 +1,22 @@
+{
+    "name": "app/exporter",
+    "authors": [
+        {
+            "name": "Pavel Pronskiy",
+            "email": "pp@sweetgroup.ru"
+        }
+    ],
+    "autoload": {
+        "psr-4": { "app\\": "app/" }
+    },
+    "require": {
+        "php": ">=8.1.0",
+        "ext-curl": "*",
+        "ext-dom": "*",
+        "ext-ctype": "*",
+        "ext-bcmath": "*",
+        "masterminds/html5": "^2.8",
+        "automattic/woocommerce": "^3.1",
+        "cheprasov/php-cli-args": "^3.0"
+    }
+}
