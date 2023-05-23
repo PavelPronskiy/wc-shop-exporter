@@ -1,0 +1,1 @@
+# wc-shop-exporter
