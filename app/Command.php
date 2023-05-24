@@ -80,6 +80,10 @@ class Command
 
                 break;
 
+            case 'products/dup/images':
+                Exporter::runProductsDuplicatesImagesCleaner($client);
+                break;
+
             case 'product/attributes':
             case 'products/attributes':
                 View::json($client->getProductAttributes());

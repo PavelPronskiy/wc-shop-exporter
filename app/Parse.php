@@ -553,6 +553,27 @@ class Parse
     }
 
     /**
+     * @param  array   $attr
+     * @return mixed
+     */
+    public function sortProductAttributes(
+        array $attr
+    ) {
+
+        usort($attr, function (
+            $a,
+            $b
+        ) {
+            $ae = explode(' ', $a);
+            $be = explode(' ', $b);
+
+            return (int) $ae[0] - (int) $be[0];
+        });
+
+        return $attr;
+    }
+
+    /**
      * [textReplaces description]
      * @param  [type] $text           [description]
      * @return [type] [description]

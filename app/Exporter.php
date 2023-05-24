@@ -116,6 +116,57 @@ class Exporter
     /**
      * @param $wc
      */
+    public static function runProductsDuplicatesImagesCleaner($wc): void
+    {
+        $page = 1;
+
+        do {
+
+            $images   = [];
+            $resArray = $wc->getProducts($page);
+            if (count($resArray) > 0) {
+                // construct relative image path
+                foreach ($resArray as $item) {
+                    foreach ($item->images as $img) {
+                        $fileImg = Config::$reg->wordpress->path . '/' . implode('/', Parse::getUrlPathAlias($img->src));
+
+                        if (is_file($fileImg)) {
+                            $images[] = $fileImg;
+                        }
+                    }
+                }
+
+                foreach ($images as $img) {
+                    $md5Img  = md5(file_get_contents($img));
+                    $fileDir = dirname($img);
+                    foreach (scandir($fileDir) as $key => $dirFile) {
+                        $dupFile = $fileDir . '/' . $dirFile;
+
+                        if (is_file($dupFile)) {
+                            // var_dump($dupFile);
+                            $md5DirFile = md5(file_get_contents($dupFile));
+                            if ($md5DirFile === $md5Img && $dupFile != $img) {
+                                View::cli('duplicate image: ' . $dupFile . PHP_EOL . 'product image: ' . $img);
+                                unlink($dupFile);
+                            }
+                        }
+                    }
+                }
+
+                View::cli('page: ' . $page);
+
+            } else {
+                $page = 0;
+            }
+
+            $page += 1;
+
+        } while ($page > 0);
+    }
+
+    /**
+     * @param $wc
+     */
     public static function runProductsScraper($wc): void
     {
         static::argsStackLimit();
