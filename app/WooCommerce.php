@@ -337,9 +337,6 @@ class WooCommerce
             ],
         ];
 
-        // var_dump($categoriesData);
-        // exit;
-
         try {
             if (count(static::getProductBySlug($data->slug)) === 0) {
                 // Отправка запроса для создания нового товара
