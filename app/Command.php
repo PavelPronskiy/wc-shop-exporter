@@ -1,32 +1,31 @@
 <?php
-
 namespace app;
 
 use CliArgs\CliArgs;
 
 /**
- *
  * This class describes an exporter.
  */
 class Command
 {
     public static $args = [];
+
     public static $cliargs = [
         'method' => [
             'alias' => 'm',
-            'help' => 'method',
+            'help'  => 'method',
         ],
         'option' => [
             'alias' => 'o',
-            'help' => 'option',
+            'help'  => 'option',
         ],
-        'stack' => [
+        'stack'  => [
             'alias' => 's',
-            'help' => 'stack size',
+            'help'  => 'stack size',
         ],
-        'limit' => [
+        'limit'  => [
             'alias' => 'l',
-            'help' => 'limit size',
+            'help'  => 'limit size',
         ],
     ];
 
@@ -35,36 +34,48 @@ class Command
      */
     public function __construct()
     {
-        $wc = new WooCommerce();
-        $CliArgs = new CliArgs(static::$cliargs);
+        $wc           = new WooCommerce();
+        $CliArgs      = new CliArgs(static::$cliargs);
         static::$args = [
             'method' => $CliArgs->getArg('m'),
             'option' => $CliArgs->getArg('o'),
-            'stack' => $CliArgs->getArg('s'),
-            'limit' => $CliArgs->getArg('l'),
+            'stack'  => $CliArgs->getArg('s'),
+            'limit'  => $CliArgs->getArg('l'),
         ];
+
+        $this->run();
+    }
+
+    /**
+     * { function_description }
+     *
+     * @param      <type>  $wc     { parameter_description }
+     */
+    public function run($client)
+    {
+
         switch (static::$args['method']) {
             case 'category':
-                Exporter::runCategoriesScraper($wc);
+                Exporter::runCategoriesScraper($client);
                 break;
 
             case 'product':
-                if (!empty(static::$args['option'])) {
-                    View::json($wc->getProductByID(static::$args['option']));
+                if ( ! empty(static::$args['option'])) {
+                    View::json($client->getProductByID(static::$args['option']));
                 } else {
-                    Exporter::runProductsScraper($wc);
+                    Exporter::runProductsScraper($client);
                 }
 
                 break;
 
             case 'product/attributes':
             case 'products/attributes':
-                    View::json($wc->getProductAttributes());
+                View::json($client->getProductAttributes());
                 break;
 
             case 'products/variations':
-                if (!empty(static::$args['option'])) {
-                    View::json($wc->getProductVariations(static::$args['option']));
+                if ( ! empty(static::$args['option'])) {
+                    View::json($client->getProductVariations(static::$args['option']));
                 }
 
                 break;

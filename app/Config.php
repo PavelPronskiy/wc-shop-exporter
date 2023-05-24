@@ -1,5 +1,4 @@
 <?php
-
 namespace app;
 
 /**
@@ -13,14 +12,12 @@ class Config
      * @var [type]
      */
     public static $reg;
-    const CONFIG_GLOBAL = PATH . '/config.json';
-
+    public const CONFIG_GLOBAL = PATH . '/config.json';
 
     public function __construct()
     {
         static::$reg = (object) static::getGlobalConfig();
     }
-
 
     /**
      * Gets the global configuration.
@@ -41,7 +38,6 @@ class Config
 
         return $config_json;
     }
-
 
     /**
      * { function_description }
