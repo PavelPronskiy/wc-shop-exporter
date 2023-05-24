@@ -215,13 +215,11 @@ class WooCommerce
         }
 
         $getExistCategory = static::getWoocommerceCategoryDataBySlug($data->slug);
-        // var_dump(array_column($categoriesNames, 'slug'));
         if (count($getExistCategory) === 0) {
             // Отправка запроса для создания новой категории
             $response = $this->client->post('products/categories', $save);
 
             if (isset($response->id)) {
-
                 $parentsMsg = count($data->parents) > 0 ? (string) implode('/', $data->parents) . '/' : '';
 
                 View::cli('Created category: ' . $parentsMsg . $data->slug);
@@ -283,7 +281,6 @@ class WooCommerce
                 ],
                 'attributes'         => $productAttributes,
                 'default_attributes' => $this->setProductDefaultAttributes($productAttributes),
-                // 'variations' => $this->setProductVariations($data->attributes)
             ],
         ];
 
