@@ -2,6 +2,7 @@
 namespace app;
 
 use Automattic\WooCommerce\Client;
+use Automattic\WooCommerce\HttpClient\HttpClientException;
 
 /**
  *
@@ -47,6 +48,17 @@ class WooCommerce
     }
 
     /**
+     * @param  $slug
+     * @return mixed
+     */
+    public function getProductBySlug($slug)
+    {
+        return $this->client->get('products', [
+            'slug' => $slug,
+        ]);
+    }
+
+    /**
      * @param  $productId
      * @return mixed
      */
@@ -84,25 +96,57 @@ class WooCommerce
     }
 
     /**
+     * @param  string  $slug
+     * @return mixed
+     */
+    public function getWoocommerceCategoryDataBySlug(
+        string $slug
+    ) {
+        return $this->client->get('products/categories', [
+            'slug'    => $slug,
+            'orderby' => 'slug',
+        ]);
+    }
+
+    /**
      * @param array  $categories
      * @param string $slug
      * @param array  $object
      */
     public function getWoocommerceCategoryIDBySlug(
-        array  $categories,
-        string $slug,
-               $object = []
+        array $categories,
+        array $parents,
+              $object = []
     ): object {
-        foreach ($categories as $categoryId => $item) {
+        // var_dump($slug);
+
+        if (count($parents) === 0) {
+            return (object) $object;
+        }
+
+        $slug = end($parents);
+
+        $parentCatDataArray = static::getWoocommerceCategoryDataBySlug($slug);
+
+        if (count($parentCatDataArray) > 0) {
+            $parentCatData = $parentCatDataArray[0];
+
+            return (object) [
+                'id'   => $parentCatData->id,
+                'name' => $parentCatData->name,
+            ];
+        }
+        // var_dump(static::getWoocommerceCategoryDataBySlug($slug));
+        // exit;
+        /*foreach ($categories as $categoryId => $item) {
             if ($item['slug'] === $slug) {
-                var_dump($slug);
 
                 return (object) [
                     'id'   => $categoryId,
                     'name' => $item['name'],
                 ];
             }
-        }
+        }*/
 
         return (object) $object;
     }
@@ -114,18 +158,26 @@ class WooCommerce
      * @return mixed
      */
     public function getWoocommerceCategoryIDBySlugName(
-        array $categoriesNames,
+        // array $categoriesNames,
         array $productCategories,
         array $array = []
     ): array
     {
-        var_dump($categoriesNames);
-        foreach ($categoriesNames as $categoryId => $item) {
-            foreach ($productCategories as $category) {
-                if ($category['alias'] === $item['slug']) {
-                    $array[] = ['id' => $categoryId];
-                }
-            }
+
+        // var_dump($categoriesNames);
+        // foreach ($categoriesNames as $categoryId => $item) {
+        // foreach ($productCategories as $category) {
+        $catEnd           = end($productCategories);
+        $getExistCategory = static::getWoocommerceCategoryDataBySlug($catEnd['alias']);
+        $getExistCategory = count($getExistCategory) > 0 ? (array) $getExistCategory[0] : [];
+        if (isset($getExistCategory['slug']) && $catEnd['alias'] === $getExistCategory['slug']) {
+            // $array[] = [
+            // 'id' => $getExistCategory['id'],
+            // 'name' => $getExistCategory['name'],
+            // ];
+            $array = [
+                'id' => $getExistCategory['id'],
+            ];
         }
 
         return $array;
@@ -144,8 +196,8 @@ class WooCommerce
         $categories      = $this->getWoocommerceCategories();
         $categoriesNames = $this->getWoocommerceCategoriesSlugNames($categories);
 
-        $endParentCategory  = end($data->parents);
-        $parentCategoryData = $this->getWoocommerceCategoryIDBySlug($categoriesNames, $endParentCategory);
+        // $endParentCategory  = end($data->parents);
+        $parentCategoryData = $this->getWoocommerceCategoryIDBySlug($categoriesNames, $data->parents);
 
         /**
          * category_1
@@ -169,7 +221,9 @@ class WooCommerce
             $save['image']['src'] = $targetData['image'];
         }
 
-        if (!in_array($data->slug, array_column($categoriesNames, 'slug'))) {
+        $getExistCategory = static::getWoocommerceCategoryDataBySlug($data->slug);
+        // var_dump(array_column($categoriesNames, 'slug'));
+        if (count($getExistCategory) === 0) {
             // Отправка запроса для создания новой категории
             $response = $this->client->post('products/categories', $save);
 
@@ -181,6 +235,9 @@ class WooCommerce
             } else {
                 View::cli('Error: ' . $targetData['url']);
             }
+        } else {
+            $categ = $getExistCategory[0];
+            View::cli('Category exists: ' . $categ->slug);
         }
 
         // category_1
@@ -245,48 +302,51 @@ class WooCommerce
         // возраст id 11
         // услуги id 12
         //
+        if (count($data->categories) === 0) {
+            return false;
+        }
 
-        if (count($data->categories) > 1) {
-            $categories      = $this->getWoocommerceCategories();
-            $categoriesNames = $this->getWoocommerceCategoriesSlugNames($categories);
-            $categoriesData  = $this->getWoocommerceCategoryIDBySlugName($categoriesNames, $data->categories);
-            // $productAttributes = $this->getProductAttributes();
+        $categoriesData = $this->getWoocommerceCategoryIDBySlugName($data->categories);
 
-            // var_dump($data->categories);
-            var_dump($categoriesData);
+        $productAttributes = $this->setProductAttributes($data->attributes);
 
-/*            $save = [
-                'variations' => $this->setProductVariations($data->attributes),
-                'product'    => [
-                    'name'               => $data->name,
-                    'type'               => 'variable',
-                    'price'              => $data->price,
-                    'description'        => $data->description,
-                    'images'             => [
-                        [
-                            'src' => $data->images->src,
-                        ],
+        $save = [
+            'variations' => $this->setProductVariations($data->attributes),
+            'product'    => [
+                'name'               => $data->name,
+                'type'               => 'variable',
+                'price'              => $data->price,
+                'description'        => $data->description,
+                'images'             => [
+                    [
+                        'src' => $data->images->src,
                     ],
-                    'purchasable'        => true,
-                    'shipping_required'  => true,
-                    'shipping_taxable'   => true,
-                    'stock_status'       => 'instock',
-                    'status'             => 'publish',
-                    'catalog_visibility' => 'visible',
-                    'categories'         => $categoriesData,
-                    'attributes'         => $this->setProductAttributes($data->attributes),
-                    // 'default_attributes' => $this->setProductDefaultAttributes(),
-                    // 'variations' => $this->setProductVariations($data->attributes)
                 ],
-            ];
+                'purchasable'        => true,
+                'shipping_required'  => true,
+                'shipping_taxable'   => true,
+                'stock_status'       => 'instock',
+                'status'             => 'publish',
+                'catalog_visibility' => 'visible',
+                'categories'         => [
+                    $categoriesData,
+                ],
+                'attributes'         => $productAttributes,
+                'default_attributes' => $this->setProductDefaultAttributes($productAttributes),
+                // 'variations' => $this->setProductVariations($data->attributes)
+            ],
+        ];
 
-            try {
+        // var_dump($categoriesData);
+        // exit;
+
+        try {
+            if (count(static::getProductBySlug($data->slug)) === 0) {
                 // Отправка запроса для создания нового товара
                 $resProduct = $this->client->post('products', $save['product']);
 
                 if (isset($resProduct->id)) {
                     // Отправка запроса для создания вариаций товара
-                    // var_dump($save['variations']);
                     $resVariations = $this->client->post(
                         'products/' . $resProduct->id . '/variations/batch',
                         [
@@ -296,12 +356,12 @@ class WooCommerce
 
                     $result = (int) $resProduct->id;
                 }
-
-            } catch (HttpClientException $e) {
-                echo 'Error: ' . $targetUrl . PHP_EOL;
-                var_dump($e);
-            }*/
+            }
+        } catch (HttpClientException $e) {
+            echo 'Error: ' . $targetUrl . PHP_EOL;
+            var_dump($e);
         }
+        // }
 
         return $result;
     }
@@ -368,7 +428,9 @@ class WooCommerce
         }
 
         for ($i = 0; $i < count($array); $i++) {
-            $array[$i]['options'] = array_unique($array[$i]['options']);
+            $array[$i]['options'] = static::sortProductAttributes(
+                array_unique($array[$i]['options'])
+            );
         }
 
         // var_dump($array);
@@ -377,9 +439,21 @@ class WooCommerce
         return $array;
     }
 
-    public function setProductDefaultAttributes()
-    {
-        return (array) Config::$reg->productDefaultAttributes;
+    /**
+     * @param $attr
+     */
+    public function setProductDefaultAttributes(
+        array $attr,
+        array $array = []
+    ) {
+        foreach ($attr as $key => $value) {
+            $array[] = [
+                'id'     => $value['id'],
+                'option' => $value['options'][0],
+            ];
+        }
+
+        return $array;
     }
 
     /**
@@ -407,5 +481,26 @@ class WooCommerce
         }
 
         return $array;
+    }
+
+    /**
+     * @param  array   $attr
+     * @return mixed
+     */
+    public function sortProductAttributes(
+        array $attr
+    ) {
+
+        usort($attr, function (
+            $a,
+            $b
+        ) {
+            $ae = explode(' ', $a);
+            $be = explode(' ', $b);
+
+            return (int) $ae[0] - (int) $be[0];
+        });
+
+        return $attr;
     }
 }

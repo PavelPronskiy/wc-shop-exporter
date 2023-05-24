@@ -126,7 +126,9 @@ class Exporter
             $targetUrl                                    = Config::$reg->scrape_url . '?' . http_build_query(static::$param[Command::$args['method']]);
             $curlData                                     = Curl::get($targetUrl);
 
-            // View::cli($targetUrl);
+            if (Command::$args['verbose']) {
+                View::cli($targetUrl);
+            }
 
             if (
                 $curlData &&

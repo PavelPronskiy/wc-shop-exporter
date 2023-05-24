@@ -1,6 +1,7 @@
 composer.lock
 composer.phar
 /vendor/
+config.json
 .phpintel
 .config.json
 node_modules

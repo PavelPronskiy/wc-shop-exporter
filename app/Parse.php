@@ -44,8 +44,6 @@ class Parse
             $parser = new SitemapParser();
             $parser->parse($url);
             foreach ($parser->getURLs() as $url => $tags) {
-                // echo $url . '<br>';
-                // var_dump(isset($tags['namespaces']['image']['image']['loc']));
                 $array[] = [
                     'url'   => $url,
                     'image' => isset($tags['namespaces']['image']['image']['loc']) ? $tags['namespaces']['image']['image']['loc'] : null,
@@ -56,8 +54,6 @@ class Parse
         } catch (SitemapParserException $e) {
             echo $e->getMessage();
         }
-
-        // $rss = \Feed::loadRss($url);
 
         return static::getCategoriesUrlsTree($array);
     }
@@ -78,12 +74,17 @@ class Parse
     ) : array
     {
         foreach ($categories as $key => $category) {
+            $countUri = count(static::getUrlPathAlias($category['url']));
+
+            // if ($countUri > 3) {
             $array[$key] = [
-                'count' => count(static::getUrlPathAlias($category['url'])),
+                'count' => $countUri,
                 'url'   => $category['url'],
                 'image' => $category['image'],
                 'name'  => $category['name'],
             ];
+
+            // }
         }
 
         usort($array, function (
@@ -92,41 +93,6 @@ class Parse
         ) {
             return $a['count'] - $b['count'];
         });
-
-        return $array;
-    }
-
-    /**
-     * Gets the categories xml data.
-     *
-     * @param  null|string $xml   The xml
-     * @param  array       $array The array
-     * @return array       The categories xml data.
-     */
-    public static function getCategoriesXMLData(
-        ? string $xml,
-        array    $array = []
-    ) {
-
-        static::loadHTML($xml);
-        $xpath = new \DOMXpath (static::$dom);
-        $xpath->registerNamespace('img', 'urn:ietf:params:xml:ns:xcal');
-
-        foreach ($xpath->evaluate("//loc") as $item) {
-            $array[] = [
-                'url'   => $item->textContent,
-                'image' => $xpath->evaluate('string(image)', $item),
-            ];
-            // echo $xpath->evaluate('string(loc)', $item), "\n";
-            // echo $xpath->evaluate('string(x:customfield[@name="description"])', $item), "\n";
-        }
-        var_dump($array);
-/*
-        foreach (static::$xml->getElementsByTagName('loc') as $loc) {
-
-            var_dump($loc);
-            $array[] = $loc->textContent;
-        }*/
 
         return $array;
     }
@@ -159,11 +125,11 @@ class Parse
      * [changeBaseHref description]
      * @return [type] [description]
      */
-    public static function getCategoryDescription() : string
+    public static function getCategoryDescription(): string
     {
         $dom = new HTML5(static::$options);
         foreach (static::$dom->getElementsByTagName('div') as $node) {
-            if ($node->getAttribute('class') === 'section-text') {
+            if ($node->getAttribute(Config::$reg->mapper->category->description[0]) === Config::$reg->mapper->category->description[1]) {
                 return $dom->saveHTML($node->childNodes);
             }
         }
@@ -293,7 +259,7 @@ class Parse
         array  $array = []
     ) {
         foreach (static::$dom->getElementsByTagName('a') as $node) {
-            if ($node->getAttribute('class') === 'product-thumbnail') {
+            if ($node->getAttribute(Config::$reg->mapper->product->thumbnail[0]) === Config::$reg->mapper->product->thumbnail[1]) {
                 if (in_array($slug, static::getUrlPathAlias($node->getAttribute('href')))) {
                     foreach ($node->getElementsByTagName('img') as $img) {
                         $src     = explode(' ', $img->getAttribute('srcset'));
@@ -366,6 +332,7 @@ class Parse
             'page_title'  => static::getPageTitle(),
             'categories'  => $categories,
             'name'        => static::getProductTitle(),
+            'slug'        => static::getProductSlug(),
             'description' => static::getProductDescription(),
             'price'       => static::getProductPrice($variations),
             'attributes'  => static::getProductAttributes($variations),
@@ -383,7 +350,7 @@ class Parse
         $dom = new HTML5(static::$options);
 
         foreach (static::$dom->getElementsByTagName('div') as $key => $node) {
-            if ($node->getAttribute('class') === 'goodsCard__descript') {
+            if ($node->getAttribute(Config::$reg->mapper->product->description[0]) === Config::$reg->mapper->product->description[1]) {
                 foreach ($node->getElementsByTagName('p') as $key => $nodeP) {
                     $nodeP->textContent = static::textReplaces($nodeP->textContent);
                 }
@@ -436,6 +403,22 @@ class Parse
     }
 
     /**
+     * @return mixed
+     */
+    public static function getProductSlug(): string
+    {
+        foreach (static::$dom->getElementsByTagName('link') as $node) {
+            if ($node->getAttribute('rel') === 'canonical') {
+                $href = static::getUrlPathAlias($node->getAttribute('href'));
+
+                return $href[count($href) - 1];
+            }
+        }
+
+        return '';
+    }
+
+    /**
      * Gets the product title.
      *
      * @return <type> The product title.
@@ -455,7 +438,7 @@ class Parse
     public static function getProductVariations(): array
     {
         foreach (static::$dom->getElementsByTagName('form') as $node) {
-            if ($node->getAttribute('class') === 'variations_form cart') {
+            if ($node->getAttribute(Config::$reg->mapper->product->variations[0]) === Config::$reg->mapper->product->variations[1]) {
                 $product = $node->getAttribute('data-product_variations');
                 if (!empty($product)) {
                     return json_decode($product);

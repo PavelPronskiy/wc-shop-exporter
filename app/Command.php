@@ -17,21 +17,26 @@ class Command
      * @var array
      */
     public static $cliargs = [
-        'method' => [
+        'method'  => [
             'alias' => 'm',
             'help'  => 'method',
         ],
-        'option' => [
+        'option'  => [
             'alias' => 'o',
             'help'  => 'option',
         ],
-        'stack'  => [
+        'stack'   => [
             'alias' => 's',
             'help'  => 'stack size',
         ],
-        'limit'  => [
+        'limit'   => [
             'alias' => 'l',
             'help'  => 'limit size',
+        ],
+        'verbose' => [
+            'alias'  => 'v',
+            'help'   => 'verbose',
+            'filter' => 'verbose',
         ],
     ];
 
@@ -43,10 +48,11 @@ class Command
         $wc           = new WooCommerce();
         $CliArgs      = new CliArgs(static::$cliargs);
         static::$args = [
-            'method' => $CliArgs->getArg('m'),
-            'option' => $CliArgs->getArg('o'),
-            'stack'  => $CliArgs->getArg('s'),
-            'limit'  => $CliArgs->getArg('l'),
+            'method'  => $CliArgs->getArg('m'),
+            'option'  => $CliArgs->getArg('o'),
+            'stack'   => $CliArgs->getArg('s'),
+            'limit'   => $CliArgs->getArg('l'),
+            'verbose' => $CliArgs->isFlagExist('v'),
         ];
 
         $this->run($wc);
