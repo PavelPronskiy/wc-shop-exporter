@@ -8,8 +8,14 @@ use CliArgs\CliArgs;
  */
 class Command
 {
+    /**
+     * @var array
+     */
     public static $args = [];
 
+    /**
+     * @var array
+     */
     public static $cliargs = [
         'method' => [
             'alias' => 'm',
@@ -43,13 +49,13 @@ class Command
             'limit'  => $CliArgs->getArg('l'),
         ];
 
-        $this->run();
+        $this->run($wc);
     }
 
     /**
      * { function_description }
      *
-     * @param      <type>  $wc     { parameter_description }
+     * @param <type> $wc { parameter_description }
      */
     public function run($client)
     {
@@ -60,7 +66,7 @@ class Command
                 break;
 
             case 'product':
-                if ( ! empty(static::$args['option'])) {
+                if (!empty(static::$args['option'])) {
                     View::json($client->getProductByID(static::$args['option']));
                 } else {
                     Exporter::runProductsScraper($client);
@@ -74,7 +80,7 @@ class Command
                 break;
 
             case 'products/variations':
-                if ( ! empty(static::$args['option'])) {
+                if (!empty(static::$args['option'])) {
                     View::json($client->getProductVariations(static::$args['option']));
                 }
 

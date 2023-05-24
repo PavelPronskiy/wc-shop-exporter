@@ -17,6 +17,7 @@
         "ext-bcmath": "*",
         "masterminds/html5": "^2.8",
         "automattic/woocommerce": "^3.1",
-        "cheprasov/php-cli-args": "^3.0"
+        "cheprasov/php-cli-args": "^3.0",
+        "vipnytt/sitemapparser": "^1.1"
     }
 }

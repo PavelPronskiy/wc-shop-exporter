@@ -2,7 +2,6 @@
 namespace app;
 
 use Automattic\WooCommerce\Client;
-use Automattic\WooCommerce\HttpClient\HttpClientException;
 
 /**
  *
@@ -21,7 +20,7 @@ class WooCommerce
             Config::$reg->localsite_url,
             Config::$reg->woocommerce->client,
             Config::$reg->woocommerce->secret,
-            Config::$reg->woocommerce->options
+            (array) Config::$reg->woocommerce->options
         );
     }
 
@@ -86,16 +85,18 @@ class WooCommerce
 
     /**
      * @param array  $categories
-     * @param string $categorySlug
+     * @param string $slug
      * @param array  $object
      */
     public function getWoocommerceCategoryIDBySlug(
         array  $categories,
-        string $categorySlug,
+        string $slug,
                $object = []
     ): object {
         foreach ($categories as $categoryId => $item) {
-            if ($item['slug'] === $categorySlug) {
+            if ($item['slug'] === $slug) {
+                var_dump($slug);
+
                 return (object) [
                     'id'   => $categoryId,
                     'name' => $item['name'],
@@ -116,7 +117,9 @@ class WooCommerce
         array $categoriesNames,
         array $productCategories,
         array $array = []
-    ): array{
+    ): array
+    {
+        var_dump($categoriesNames);
         foreach ($categoriesNames as $categoryId => $item) {
             foreach ($productCategories as $category) {
                 if ($category['alias'] === $item['slug']) {
@@ -130,12 +133,12 @@ class WooCommerce
 
     /**
      * @param object $data
-     * @param string $targetUrl
+     * @param string $targetData
      * @param array  $save
      */
     public function saveCategory(
         object $data,
-        string $targetUrl,
+        array  $targetData,
         array  $save = []
     ) {
         $categories      = $this->getWoocommerceCategories();
@@ -144,33 +147,84 @@ class WooCommerce
         $endParentCategory  = end($data->parents);
         $parentCategoryData = $this->getWoocommerceCategoryIDBySlug($categoriesNames, $endParentCategory);
 
-        if (isset($parentCategoryData->id)) {
-            $save = [
-                'name'        => $data->name,
-                'slug'        => $data->slug,
-                'parent'      => $parentCategoryData->id,
-                'display'     => 'default',
-                'description' => $data->description,
-            ];
+        /**
+         * category_1
+         *    \_ category_2
+         *          \_ category_3
+         */
 
-            if (!empty($data->image)) {
-                $save['image'] = [
-                    'src' => $data->image,
-                ];
-            }
+        $save = [
+            'name'        => $data->name,
+            'slug'        => $data->slug,
+            'parent'      => isset($parentCategoryData->id) ? $parentCategoryData->id : 0,
+            'display'     => 'default',
+            'description' => $data->description,
+            'image'       => [],
+        ];
 
-            if (!in_array($data->slug, array_column($categoriesNames, 'slug'))) {
-                try {
-                    // Отправка запроса для создания новой категории
-                    $response = $this->client->post('products/categories', $save);
-                } catch (HttpClientException $e) {
-                    echo 'Error: ' . $targetUrl . PHP_EOL;
-                    // var_dump($e);
-                }
-            }
-        } else {
-            var_dump('not found: ' . $endParentCategory);
+        if (!empty($data->image)) {
+            $save['image']['src'] = $data->image;
         }
+        if (!empty($targetData['image'])) {
+            $save['image']['src'] = $targetData['image'];
+        }
+
+        if (!in_array($data->slug, array_column($categoriesNames, 'slug'))) {
+            // Отправка запроса для создания новой категории
+            $response = $this->client->post('products/categories', $save);
+
+            if (isset($response->id)) {
+
+                $parentsMsg = count($data->parents) > 0 ? (string) implode('/', $data->parents) . '/' : '';
+
+                View::cli('Created category: ' . $parentsMsg . $data->slug);
+            } else {
+                View::cli('Error: ' . $targetData['url']);
+            }
+        }
+
+        // category_1
+        // if (count($data->parents) === 0) {
+        // var_dump(count($data->parents));
+        // }
+
+        /*if (!isset($parentCategoryData->id)) {
+
+            // create parent category
+
+            var_dump($data);
+
+        } else {
+
+        }
+*/
+        // if (isset($parentCategoryData->id)) {
+/*        $save = [
+            'name'        => $data->name,
+            'slug'        => $data->slug,
+            'parent'      => $parentCategoryData->id,
+            'display'     => 'default',
+            'description' => $data->description,
+        ];
+
+        if (!empty($data->image)) {
+            $save['image'] = [
+                'src' => $data->image,
+            ];
+        }
+
+        if (!in_array($data->slug, array_column($categoriesNames, 'slug'))) {
+            try {
+                // Отправка запроса для создания новой категории
+                // $response = $this->client->post('products/categories', $save);
+            } catch (HttpClientException $e) {
+                echo 'Error: ' . $targetUrl . PHP_EOL;
+                // var_dump($e);
+            }
+        }*/
+/*        } else {
+            var_dump('not found: ' . $endParentCategory);
+        }*/
     }
 
     /**
@@ -198,7 +252,10 @@ class WooCommerce
             $categoriesData  = $this->getWoocommerceCategoryIDBySlugName($categoriesNames, $data->categories);
             // $productAttributes = $this->getProductAttributes();
 
-            $save = [
+            // var_dump($data->categories);
+            var_dump($categoriesData);
+
+/*            $save = [
                 'variations' => $this->setProductVariations($data->attributes),
                 'product'    => [
                     'name'               => $data->name,
@@ -223,9 +280,6 @@ class WooCommerce
                 ],
             ];
 
-            // var_dump($save['product']['attributes']);
-            // exit;
-
             try {
                 // Отправка запроса для создания нового товара
                 $resProduct = $this->client->post('products', $save['product']);
@@ -242,10 +296,11 @@ class WooCommerce
 
                     $result = (int) $resProduct->id;
                 }
+
             } catch (HttpClientException $e) {
                 echo 'Error: ' . $targetUrl . PHP_EOL;
                 var_dump($e);
-            }
+            }*/
         }
 
         return $result;
