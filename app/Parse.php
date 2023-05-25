@@ -31,6 +31,80 @@ class Parse
     public static $xml;
 
     /**
+     * Gets the product html attributes.
+     *
+     * @param  array $attributes
+     * @param  array $array        The array
+     * @return array The product html attributes.
+     */
+    public static function cleanExcessProductAttributes(
+        array $attributes,
+        array $array = []
+    )
+    {
+        $attrs   = [];
+        $attrsPa = [];
+
+        foreach ((array) Config::$reg->mapper->product->attributes as $key => $value)
+        {
+            $attrsPa[] = str_replace(['-', '_'], '', urldecode(
+                array_values((array) $value)[0]
+            ));
+        }
+
+        $inputs = [];
+        foreach (static::$dom->getElementsByTagName('div') as $nodeVariations)
+        {
+            if ($nodeVariations->getAttribute('class') === 'variations')
+            {
+                foreach ($nodeVariations->getElementsByTagName('div') as $nodeChilds)
+                {
+                    $clClean = str_replace(['-', '_'], '', urldecode($nodeChilds->getAttribute('class')));
+
+                    if (in_array($clClean, array_values($attrsPa)))
+                    {
+                        foreach ($nodeChilds->childNodes as $key => $cNodes)
+                        {
+                            if ($cNodes->getAttribute('class') === 'value')
+                            {
+                                foreach ($cNodes->getElementsByTagName('input') as $key => $inpNodes)
+                                {
+                                    $inpAttrValue = urldecode($inpNodes->getAttribute('value'));
+                                    $inpNameValue = urldecode($inpNodes->getAttribute('name'));
+
+                                    if (!isset($inputs[$inpNameValue]))
+                                    {
+                                        $inputs[$inpNameValue] = [];
+                                    }
+
+                                    $inputs[$inpNameValue][] = $inpAttrValue;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // удаляем лишние вариации атрибутов
+        foreach ($attributes as $attrKeyIndex => $attr)
+        {
+            foreach ((array) $attr->attributes as $attrKey => $attrValue)
+            {
+                $attrKeyDec = static::replProdAttrsNamesToSlugOpts(urldecode($attrKey));
+                $attrValDec = static::replProdAttrsNamesToSlugOpts(urldecode($attrValue));
+
+                if (isset($inputs[$attrKeyDec]) && !in_array($attrValDec, $inputs[$attrKeyDec]))
+                {
+                    unset($attributes[$attrKeyIndex]);
+                }
+            }
+        }
+
+        return $attributes;
+    }
+
+    /**
      * @param  string  $url
      * @param  array   $array
      * @return mixed
@@ -38,12 +112,14 @@ class Parse
     public static function getCategoriesSitemapData(
         ? string $url,
         array    $array = []
-    ) {
+    )
+    {
 
         try {
             $parser = new SitemapParser();
             $parser->parse($url);
-            foreach ($parser->getURLs() as $url => $tags) {
+            foreach ($parser->getURLs() as $url => $tags)
+            {
                 $array[] = [
                     'url'   => $url,
                     'image' => isset($tags['namespaces']['image']['image']['loc']) ? $tags['namespaces']['image']['image']['loc'] : null,
@@ -51,7 +127,9 @@ class Parse
                 ];
             }
 
-        } catch (SitemapParserException $e) {
+        }
+        catch (SitemapParserException $e)
+        {
             echo $e->getMessage();
         }
 
@@ -73,7 +151,8 @@ class Parse
         array $array = []
     ) : array
     {
-        foreach ($categories as $key => $category) {
+        foreach ($categories as $key => $category)
+        {
             $countUri = count(static::getUrlPathAlias($category['url']));
 
             // if ($countUri > 3) {
@@ -90,7 +169,8 @@ class Parse
         usort($array, function (
             $a,
             $b
-        ) {
+        )
+        {
             return $a['count'] - $b['count'];
         });
 
@@ -105,7 +185,8 @@ class Parse
      */
     public static function getCategoryData(
         string $body
-    ) {
+    )
+    {
 
         static::loadHTML($body);
         $parents = static::getCategoryParents();
@@ -128,8 +209,10 @@ class Parse
     public static function getCategoryDescription(): string
     {
         $dom = new HTML5(static::$options);
-        foreach (static::$dom->getElementsByTagName('div') as $node) {
-            if ($node->getAttribute(Config::$reg->mapper->category->description[0]) === Config::$reg->mapper->category->description[1]) {
+        foreach (static::$dom->getElementsByTagName('div') as $node)
+        {
+            if ($node->getAttribute(Config::$reg->mapper->category->description[0]) === Config::$reg->mapper->category->description[1])
+            {
                 return $dom->saveHTML($node->childNodes);
             }
         }
@@ -144,16 +227,20 @@ class Parse
     public static function getCategoryImage(
         array  $parents,
         string $slug
-    ) {
+    )
+    {
         $parentUrl = count($parents) > 0 ? Config::$reg->scrape_url . 'product-category/' . implode('/', $parents) . '/' : Config::$reg->scrape_url;
 
         $parentData = Curl::get($parentUrl);
 
-        if (!empty($parentData->body)) {
+        if (!empty($parentData->body))
+        {
             static::loadHTML($parentData->body);
 
             return static::getParentCategoryImage($slug);
-        } else {
+        }
+        else
+        {
             return null;
         }
     }
@@ -165,7 +252,8 @@ class Parse
      */
     public static function getCategoryName()
     {
-        foreach (static::$dom->getElementsByTagName('h1') as $node) {
+        foreach (static::$dom->getElementsByTagName('h1') as $node)
+        {
             return $node->nodeValue;
         }
     }
@@ -179,16 +267,21 @@ class Parse
     public static function getCategoryParents(
         array $href = []
     ): array{
-        foreach (static::$dom->getElementsByTagName('link') as $node) {
-            if ($node->getAttribute('rel') === 'canonical') {
+        foreach (static::$dom->getElementsByTagName('link') as $node)
+        {
+            if ($node->getAttribute('rel') === 'canonical')
+            {
                 $href = static::getUrlPathAlias($node->getAttribute('href'));
                 // return $href[count($href) - 1];
             }
         }
 
-        if (count($href) > 0) {
+        if (count($href) > 0)
+        {
             unset($href[0], $href[count($href)]);
-        } else {
+        }
+        else
+        {
             return [];
         }
 
@@ -202,8 +295,10 @@ class Parse
      */
     public static function getCategorySlug()
     {
-        foreach (static::$dom->getElementsByTagName('link') as $node) {
-            if ($node->getAttribute('rel') === 'canonical') {
+        foreach (static::$dom->getElementsByTagName('link') as $node)
+        {
+            if ($node->getAttribute('rel') === 'canonical')
+            {
                 $href = static::getUrlPathAlias($node->getAttribute('href'));
 
                 return $href[count($href) - 1];
@@ -222,13 +317,16 @@ class Parse
         &$parentNode,
          $tagName,
          $className
-    ) {
+    )
+    {
         $nodes = [];
 
         $childNodeList = $parentNode->getElementsByTagName($tagName);
-        for ($i = 0; $i < $childNodeList->length; $i++) {
+        for ($i = 0; $i < $childNodeList->length; $i++)
+        {
             $temp = $childNodeList->item($i);
-            if (stripos($temp->getAttribute('class'), $className) !== false) {
+            if (stripos($temp->getAttribute('class'), $className) !== false)
+            {
                 $nodes[] = $temp;
             }
         }
@@ -242,7 +340,8 @@ class Parse
      */
     public static function getPageTitle()
     {
-        foreach (static::$dom->getElementsByTagName('title') as $node) {
+        foreach (static::$dom->getElementsByTagName('title') as $node)
+        {
             return $node->nodeValue;
         }
     }
@@ -257,11 +356,16 @@ class Parse
     public static function getParentCategoryImage(
         string $slug,
         array  $array = []
-    ) {
-        foreach (static::$dom->getElementsByTagName('a') as $node) {
-            if ($node->getAttribute(Config::$reg->mapper->product->thumbnail[0]) === Config::$reg->mapper->product->thumbnail[1]) {
-                if (in_array($slug, static::getUrlPathAlias($node->getAttribute('href')))) {
-                    foreach ($node->getElementsByTagName('img') as $img) {
+    )
+    {
+        foreach (static::$dom->getElementsByTagName('a') as $node)
+        {
+            if ($node->getAttribute(Config::$reg->mapper->product->thumbnail[0]) === Config::$reg->mapper->product->thumbnail[1])
+            {
+                if (in_array($slug, static::getUrlPathAlias($node->getAttribute('href'))))
+                {
+                    foreach ($node->getElementsByTagName('img') as $img)
+                    {
                         $src     = explode(' ', $img->getAttribute('srcset'));
                         $array[] = $src[0];
                     }
@@ -282,8 +386,10 @@ class Parse
     public static function getProductAttributes(
         array $variations,
         array $array = []
-    ) {
-        foreach ($variations as $item) {
+    )
+    {
+        foreach ($variations as $item)
+        {
             $array[] = static::mapAttributes($item);
         }
 
@@ -298,10 +404,13 @@ class Parse
         array $array = []
     ): array
     {
-        foreach (static::$dom->getElementsByTagName('nav') as $key => $node) {
-            foreach ($node->getElementsByTagName('a') as $key => $a) {
+        foreach (static::$dom->getElementsByTagName('nav') as $key => $node)
+        {
+            foreach ($node->getElementsByTagName('a') as $key => $a)
+            {
                 $hrefs = self::getUrlPathAlias($a->getAttribute('href'));
-                if (count($hrefs) > 0) {
+                if (count($hrefs) > 0)
+                {
                     $array[] = [
                         'alias'    => $hrefs[count($hrefs) - 1],
                         'category' => $a->nodeValue,
@@ -320,13 +429,14 @@ class Parse
      * @return [type] [description]
      */
     public static function getProductData(
-        ? string $body
-    ) : object {
+        string $body
+    ): object
+    {
         // var_dump($parentUrl);
 
         static::loadHTML($body);
-        $categories = static::getProductCategories();
-        $variations = static::getProductVariations();
+        $categories     = static::getProductCategories();
+        $jsonVariations = static::getProductJSONVariations();
 
         return (object) [
             'page_title'  => static::getPageTitle(),
@@ -334,9 +444,9 @@ class Parse
             'name'        => static::getProductTitle(),
             'slug'        => static::getProductSlug(),
             'description' => static::getProductDescription(),
-            'price'       => static::getProductPrice($variations),
-            'attributes'  => static::getProductAttributes($variations),
-            'images'      => static::getProductImage($variations),
+            'price'       => static::getProductPrice($jsonVariations),
+            'attributes'  => static::getProductAttributes(static::cleanExcessProductAttributes($jsonVariations)),
+            'images'      => static::getProductImage($jsonVariations),
         ];
     }
 
@@ -349,14 +459,19 @@ class Parse
     {
         $dom = new HTML5(static::$options);
 
-        foreach (static::$dom->getElementsByTagName('div') as $key => $node) {
-            if ($node->getAttribute(Config::$reg->mapper->product->description[0]) === Config::$reg->mapper->product->description[1]) {
-                foreach ($node->getElementsByTagName('p') as $key => $nodeP) {
+        foreach (static::$dom->getElementsByTagName('div') as $key => $node)
+        {
+            if ($node->getAttribute(Config::$reg->mapper->product->description[0]) === Config::$reg->mapper->product->description[1])
+            {
+                foreach ($node->getElementsByTagName('p') as $key => $nodeP)
+                {
                     $nodeP->textContent = static::textReplaces($nodeP->textContent);
                 }
 
-                foreach ($node->getElementsByTagName('div') as $key => $nodeDiv) {
-                    if ($nodeDiv->getAttribute('class') === 'title') {
+                foreach ($node->getElementsByTagName('div') as $key => $nodeDiv)
+                {
+                    if ($nodeDiv->getAttribute('class') === 'title')
+                    {
                         $node->removeChild($nodeDiv);
                     }
                 }
@@ -378,12 +493,36 @@ class Parse
     public static function getProductImage(
         array $variations,
               $array = []
-    ) {
-        foreach ($variations as $item) {
+    )
+    {
+        foreach ($variations as $item)
+        {
             return $item->image;
         }
 
         return (object) $array;
+    }
+
+    /**
+     * Gets the product variations.
+     *
+     * @return array The product variations.
+     */
+    public static function getProductJSONVariations(): array
+    {
+        foreach (static::$dom->getElementsByTagName('form') as $node)
+        {
+            if ($node->getAttribute(Config::$reg->mapper->product->variations[0]) === Config::$reg->mapper->product->variations[1])
+            {
+                $product = $node->getAttribute('data-product_variations');
+                if (!empty($product))
+                {
+                    return json_decode($product);
+                }
+            }
+        }
+
+        return [];
     }
 
     /**
@@ -395,7 +534,8 @@ class Parse
     public static function getProductPrice($variations)
     {
         $array = [];
-        foreach ($variations as $key => $item) {
+        foreach ($variations as $key => $item)
+        {
             $array[$key] = $item->display_price;
         }
 
@@ -407,8 +547,10 @@ class Parse
      */
     public static function getProductSlug(): string
     {
-        foreach (static::$dom->getElementsByTagName('link') as $node) {
-            if ($node->getAttribute('rel') === 'canonical') {
+        foreach (static::$dom->getElementsByTagName('link') as $node)
+        {
+            if ($node->getAttribute('rel') === 'canonical')
+            {
                 $href = static::getUrlPathAlias($node->getAttribute('href'));
 
                 return $href[count($href) - 1];
@@ -425,28 +567,10 @@ class Parse
      */
     public static function getProductTitle()
     {
-        foreach (static::$dom->getElementsByTagName('h1') as $node) {
+        foreach (static::$dom->getElementsByTagName('h1') as $node)
+        {
             return $node->nodeValue;
         }
-    }
-
-    /**
-     * Gets the product variations.
-     *
-     * @return array The product variations.
-     */
-    public static function getProductVariations(): array
-    {
-        foreach (static::$dom->getElementsByTagName('form') as $node) {
-            if ($node->getAttribute(Config::$reg->mapper->product->variations[0]) === Config::$reg->mapper->product->variations[1]) {
-                $product = $node->getAttribute('data-product_variations');
-                if (!empty($product)) {
-                    return json_decode($product);
-                }
-            }
-        }
-
-        return [];
     }
 
     /**
@@ -496,8 +620,10 @@ class Parse
     public static function mapAttributes(
               $item,
         array $array = []
-    ) {
-        foreach ($item->attributes as $key => $attr) {
+    )
+    {
+        foreach ($item->attributes as $key => $attr)
+        {
             $array[] = [
                 'key'           => urldecode($key),
                 'display_price' => $item->display_price,
@@ -528,8 +654,10 @@ class Parse
      */
     public static function replProdAttrsNamesToSlugOpts(
         string $attr
-    ): string {
-        foreach ((array) Config::$reg->attributeOptionsNamesToSlugsReplaces as $str) {
+    ): string
+    {
+        foreach ((array) Config::$reg->attributeOptionsNamesToSlugsReplaces as $str)
+        {
             $attr = str_replace($str[0], $str[1], $attr);
         }
 
@@ -544,8 +672,10 @@ class Parse
      */
     public static function replaceProductAttributeNames(
         string $attr
-    ): string {
-        foreach ((array) Config::$reg->attributeReplaces as $str) {
+    ): string
+    {
+        foreach ((array) Config::$reg->attributeReplaces as $str)
+        {
             $attr = str_replace($str[0], $str[1], $attr);
         }
 
@@ -556,14 +686,16 @@ class Parse
      * @param  array   $attr
      * @return mixed
      */
-    public function sortProductAttributes(
+    public static function sortProductAttributes(
         array $attr
-    ) {
+    )
+    {
 
         usort($attr, function (
             $a,
             $b
-        ) {
+        )
+        {
             $ae = explode(' ', $a);
             $be = explode(' ', $b);
 
@@ -580,7 +712,8 @@ class Parse
      */
     public static function textReplaces($text): string
     {
-        foreach (Config::$reg->replaces as $replace) {
+        foreach (Config::$reg->replaces as $replace)
+        {
             $text = str_replace($replace->target, $replace->modify, $text);
         }
 

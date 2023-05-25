@@ -66,15 +66,19 @@ class Command
     public function run($client)
     {
 
-        switch (static::$args['method']) {
+        switch (static::$args['method'])
+        {
             case 'category':
                 Exporter::runCategoriesScraper($client);
                 break;
 
             case 'product':
-                if (!empty(static::$args['option'])) {
+                if (!empty(static::$args['option']))
+                {
                     View::json($client->getProductByID(static::$args['option']));
-                } else {
+                }
+                else
+                {
                     Exporter::runProductsScraper($client);
                 }
 
@@ -90,9 +94,16 @@ class Command
                 break;
 
             case 'products/variations':
-                if (!empty(static::$args['option'])) {
+                if (!empty(static::$args['option']))
+                {
                     View::json($client->getProductVariations(static::$args['option']));
                 }
+
+                break;
+
+            case 'boost/cache':
+                $boostPages = BoostCachePages::boostPagesFromSitemap();
+                var_dump($boostPages);
 
                 break;
 

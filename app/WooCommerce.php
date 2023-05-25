@@ -43,7 +43,8 @@ class WooCommerce
      */
     public function getProductByID(
         int $productId = 1434
-    ) {
+    )
+    {
         return $this->client->get("products/$productId");
     }
 
@@ -73,7 +74,8 @@ class WooCommerce
      */
     public function getProducts(
         $page
-    ) {
+    )
+    {
         return $this->client->get('products', [
             'per_page' => 100,
             'page'     => $page,
@@ -98,7 +100,8 @@ class WooCommerce
         array $array = []
     ): array
     {
-        foreach ($categories as $category) {
+        foreach ($categories as $category)
+        {
             $array[$category->id] = [
                 'slug' => $category->slug,
                 'name' => $category->name,
@@ -114,7 +117,8 @@ class WooCommerce
      */
     public function getWoocommerceCategoryDataBySlug(
         string $slug
-    ) {
+    )
+    {
         return $this->client->get('products/categories', [
             'slug'    => $slug,
             'orderby' => 'slug',
@@ -130,10 +134,12 @@ class WooCommerce
         array $categories,
         array $parents,
               $object = []
-    ): object {
+    ): object
+    {
         // var_dump($slug);
 
-        if (count($parents) === 0) {
+        if (count($parents) === 0)
+        {
             return (object) $object;
         }
 
@@ -141,7 +147,8 @@ class WooCommerce
 
         $parentCatDataArray = static::getWoocommerceCategoryDataBySlug($slug);
 
-        if (count($parentCatDataArray) > 0) {
+        if (count($parentCatDataArray) > 0)
+        {
             $parentCatData = $parentCatDataArray[0];
 
             return (object) [
@@ -167,7 +174,8 @@ class WooCommerce
         $catEnd           = end($productCategories);
         $getExistCategory = static::getWoocommerceCategoryDataBySlug($catEnd['alias']);
         $getExistCategory = count($getExistCategory) > 0 ? (array) $getExistCategory[0] : [];
-        if (isset($getExistCategory['slug']) && $catEnd['alias'] === $getExistCategory['slug']) {
+        if (isset($getExistCategory['slug']) && $catEnd['alias'] === $getExistCategory['slug'])
+        {
             $array = [
                 'id' => $getExistCategory['id'],
             ];
@@ -185,7 +193,8 @@ class WooCommerce
         object $data,
         array  $targetData,
         array  $save = []
-    ) {
+    )
+    {
         $categories      = $this->getWoocommerceCategories();
         $categoriesNames = $this->getWoocommerceCategoriesSlugNames($categories);
 
@@ -207,26 +216,34 @@ class WooCommerce
             'image'       => [],
         ];
 
-        if (!empty($data->image)) {
+        if (!empty($data->image))
+        {
             $save['image']['src'] = $data->image;
         }
-        if (!empty($targetData['image'])) {
+        if (!empty($targetData['image']))
+        {
             $save['image']['src'] = $targetData['image'];
         }
 
         $getExistCategory = static::getWoocommerceCategoryDataBySlug($data->slug);
-        if (count($getExistCategory) === 0) {
+        if (count($getExistCategory) === 0)
+        {
             // Отправка запроса для создания новой категории
             $response = $this->client->post('products/categories', $save);
 
-            if (isset($response->id)) {
+            if (isset($response->id))
+            {
                 $parentsMsg = count($data->parents) > 0 ? (string) implode('/', $data->parents) . '/' : '';
 
                 View::cli('Created category: ' . $parentsMsg . $data->slug);
-            } else {
+            }
+            else
+            {
                 View::cli('Error: ' . $targetData['url']);
             }
-        } else {
+        }
+        else
+        {
             $categ = $getExistCategory[0];
             View::cli('Category exists: ' . $categ->slug);
         }
@@ -244,13 +261,15 @@ class WooCommerce
         string $targetUrl,
         array  $save = [],
         int    $result = 0
-    ) {
+    )
+    {
 
         // attributes
         // возраст id 11
         // услуги id 12
         //
-        if (count($data->categories) === 0) {
+        if (count($data->categories) === 0)
+        {
             return false;
         }
 
@@ -284,12 +303,19 @@ class WooCommerce
             ],
         ];
 
+        /*if (Command::$args['verbose'])
+        {
+        View::json($save);
+        }*/
+
         try {
-            if (count(static::getProductBySlug($data->slug)) === 0) {
+            if (count(static::getProductBySlug($data->slug)) === 0)
+            {
                 // Отправка запроса для создания нового товара
                 $resProduct = $this->client->post('products', $save['product']);
 
-                if (isset($resProduct->id)) {
+                if (isset($resProduct->id))
+                {
                     // Отправка запроса для создания вариаций товара
                     $resVariations = $this->client->post(
                         'products/' . $resProduct->id . '/variations/batch',
@@ -301,7 +327,9 @@ class WooCommerce
                     $result = (int) $resProduct->id;
                 }
             }
-        } catch (HttpClientException $e) {
+        }
+        catch (HttpClientException $e)
+        {
             echo 'Error: ' . $targetUrl . PHP_EOL;
             var_dump($e);
         }
@@ -321,10 +349,12 @@ class WooCommerce
     public function setProductAttributeVariations(
         array $data,
         array $array = []
-    ) {
+    )
+    {
         // $keys = [11 => 'attribute_pa_возраст', 12 => 'attribute_pa_услуги']
         $keys = (array) Config::$reg->mapper->product->attributes;
-        foreach ($data as $variation) {
+        foreach ($data as $variation)
+        {
             $array[] = [
                 'id'     => array_keys($keys)[array_search($variation['key'], array_values($keys))],
                 'option' => Parse::replProdAttrsNamesToSlugOpts($variation['name']),
@@ -344,7 +374,8 @@ class WooCommerce
     public function setProductAttributes(
         array $dataAttributes,
         array $array = []
-    ) {
+    )
+    {
         $array = [
             [
                 'id'        => 11,
@@ -362,17 +393,23 @@ class WooCommerce
             ],
         ];
 
-        foreach ($dataAttributes as $dataAttrA) {
-            foreach ($dataAttrA as $dataAttrB) {
-                if ($dataAttrB['key'] === 'attribute_pa_возраст') {
+        foreach ($dataAttributes as $dataAttrA)
+        {
+            foreach ($dataAttrA as $dataAttrB)
+            {
+                if ($dataAttrB['key'] === 'attribute_pa_возраст')
+                {
                     $array[0]['options'][] = $dataAttrB['name'];
-                } elseif ($dataAttrB['key'] === 'attribute_pa_услуги') {
+                }
+                elseif ($dataAttrB['key'] === 'attribute_pa_услуги')
+                {
                     $array[1]['options'][] = $dataAttrB['name'];
                 }
             }
         }
 
-        for ($i = 0; $i < count($array); $i++) {
+        for ($i = 0; $i < count($array); $i++)
+        {
             $array[$i]['options'] = Parse::sortProductAttributes(
                 array_unique($array[$i]['options'])
             );
@@ -387,8 +424,10 @@ class WooCommerce
     public function setProductDefaultAttributes(
         array $attr,
         array $array = []
-    ) {
-        foreach ($attr as $option) {
+    )
+    {
+        foreach ($attr as $option)
+        {
             $array[] = [
                 'id'     => $option['id'],
                 'option' => $option['options'][0],
@@ -406,8 +445,10 @@ class WooCommerce
     public function setProductVariations(
         array $dataAttributes,
         array $array = []
-    ) {
-        foreach ($dataAttributes as $keyA => $dataAttrA) {
+    )
+    {
+        foreach ($dataAttributes as $keyA => $dataAttrA)
+        {
             $array[$keyA]                  = [];
             $array[$keyA]['regular_price'] = $dataAttrA[0]['display_price'];
             $array[$keyA]['attributes']    = static::setProductAttributeVariations($dataAttrA);
